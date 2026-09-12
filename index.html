@@ -189,7 +189,7 @@
   .weekdays div.sat{ color:#4C6FBE; font-weight:700; }
   .weekdays div.sun{ color:var(--absent); font-weight:700; }
   .grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:6px; }
-  .cell{ min-height:70px; border-radius:10px; padding:6px 6px 8px; background:transparent; }
+  .cell{ min-height:70px; min-width:0; border-radius:10px; padding:6px 6px 8px; background:transparent; }
   .cell.empty{ background:none; }
   .cell .date-num{ font-size:12px; color:var(--ink-soft); margin-bottom:4px; }
   .cell.has-class{ background:var(--active-tint); border:1px solid var(--line); }
@@ -197,21 +197,21 @@
   .cell.holiday .date-num{ color:var(--absent); font-weight:700; }
   .cell .holiday-name{ font-size:9.5px; color:var(--absent); margin:-2px 0 4px; line-height:1.2;
     overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .chip-list{ display:flex; flex-direction:column; gap:4px; }
+  .chip-list{ display:flex; flex-direction:column; gap:4px; min-width:0; }
   .chip{
     display:flex; align-items:center; gap:5px; font-size:11px; padding:3px 7px;
     border-radius:20px; cursor:pointer; border:1px solid var(--none-line);
     background:var(--none-bg); color:var(--ink-soft); user-select:none;
-    transition:transform .08s ease;
+    transition:transform .08s ease; min-width:0; width:100%;
   }
   .chip:active{ transform:scale(0.96); }
   .chip.present{ background:var(--present-bg); border-color:#BFE3D1; color:var(--present); }
   .chip.absent{ background:var(--absent-bg); border-color:#EFC9CC; color:var(--absent); }
   .chip .dot{ width:6px; height:6px; border-radius:50%; background:currentColor; flex-shrink:0; }
-  .chip .txt{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .chip .txt{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .chip-cycle-label{
     font-size:9.5px; color:var(--accent); font-weight:600; margin:-2px 0 2px 3px;
-    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
   }
   .legend{ display:flex; gap:14px; margin-top:16px; font-size:12px; color:var(--ink-soft); flex-wrap:wrap; }
   .legend span{ display:inline-flex; align-items:center; gap:5px; }
@@ -306,7 +306,7 @@ const KR_HOLIDAYS = {
   '2027-10-11':'대체공휴일', '2027-12-25':'크리스마스', '2027-12-27':'대체공휴일',
 };
 
-let kids = []; // {id, name, color, academies:[{id, name, days:[0-6], cycleSize?, paidCycles?}]}
+let kids = []; // {id, name, color, academies:[{id, name, days:[0-6], cycleSize?, paidCycles?, priorCount?}]}
 let attendance = {}; // key: kidId__academyId__YYYY-MM-DD -> 'present' | 'absent'
 let current = new Date();
 current.setDate(1);
@@ -472,11 +472,12 @@ function getSortedPresentDates(kidId, academyId){
 
 // 특정 날짜(dateStr)의 출석이 전체 누적 중 몇 회차-몇번째인지 라벨을 만든다.
 // 회차 이월(예: 상담) 등 사이클 기준(ac.cycleSize)이 설정된 학원에만 적용된다.
+// ac.priorCount: 이 앱으로 기록하기 전에 이미 진행한 횟수(수동 입력값)
 function getCycleLabel(ac, sortedDates, dateStr){
   if(!ac.cycleSize) return null;
   const idx = sortedDates.indexOf(dateStr);
   if(idx === -1) return null;
-  const cum = idx + 1;
+  const cum = idx + 1 + (ac.priorCount || 0);
   const cycleNum = Math.ceil(cum / ac.cycleSize);
   const pos = cum - (cycleNum - 1) * ac.cycleSize;
   let label = `${cycleNum}회차-${pos}번째`;
@@ -487,7 +488,7 @@ function getCycleLabel(ac, sortedDates, dateStr){
 // 학원 카드/요약에 쓰는 '현재까지 진행 상황' 텍스트
 function getCycleStatus(ac, sortedDates){
   if(!ac.cycleSize) return null;
-  const cum = sortedDates.length;
+  const cum = sortedDates.length + (ac.priorCount || 0);
   if(cum === 0){
     return { text: `아직 출석 없음 (${ac.cycleSize}회 기준)`, paidText: ac.paidCycles ? `${ac.paidCycles}회차까지 납부` : null };
   }
@@ -547,7 +548,7 @@ function renderKidList(){
   list.innerHTML = kids.map(kid=>{
     const academies = kid.academies || [];
     const academyHtml = academies.map(ac=>{
-      const cycleText = ac.cycleSize ? ` · ${ac.cycleSize}회 1주기${ac.paidCycles ? ` · ${ac.paidCycles}회차까지 납부` : ''}` : '';
+      const cycleText = ac.cycleSize ? ` · ${ac.cycleSize}회 1주기${ac.paidCycles ? ` · ${ac.paidCycles}회차까지 납부` : ''}${ac.priorCount ? ` · 기존 ${ac.priorCount}회 반영` : ''}` : '';
       return `
       <div class="academy-tag">
         <span><span class="a-name">${escapeHtml(ac.name)}</span><span class="a-days">${daysLabel(ac.days) || '요일 미설정'}${escapeHtml(cycleText)}</span></span>
@@ -567,6 +568,7 @@ function renderKidList(){
     const prefillDays = editingAcademy ? editingAcademy.days : [];
     const prefillCycleSize = editingAcademy && editingAcademy.cycleSize ? editingAcademy.cycleSize : '';
     const prefillPaidCycles = editingAcademy && editingAcademy.paidCycles ? editingAcademy.paidCycles : '';
+    const prefillPriorCount = editingAcademy && editingAcademy.priorCount ? editingAcademy.priorCount : '';
 
     return `
       <div class="kid-block">
@@ -585,6 +587,7 @@ function renderKidList(){
           <div class="cycle-input-row">
             <input type="number" min="1" class="academy-cycle-input" placeholder="몇 회당 1주기 (선택, 예: 12)" value="${prefillCycleSize}">
             <input type="number" min="1" class="academy-paid-input" placeholder="납부 완료 회차 (선택, 예: 6)" value="${prefillPaidCycles}">
+            <input type="number" min="0" class="academy-prior-input" placeholder="이 앱 기록 전 이미 진행한 횟수 (선택, 예: 8)" value="${prefillPriorCount}">
           </div>
           <div class="form-row">
             <button class="btn btn-primary academy-save-btn" data-kid="${kid.id}" data-academy="${editingAcademy ? editingAcademy.id : ''}">${editingAcademy ? '수정 저장' : '저장'}</button>
@@ -624,16 +627,18 @@ function renderKidList(){
     const selectedDays = Array.from(form.querySelectorAll('.day-toggle.on')).map(b=>parseInt(b.dataset.day,10));
     const cycleSizeRaw = form.querySelector('.academy-cycle-input').value.trim();
     const paidCyclesRaw = form.querySelector('.academy-paid-input').value.trim();
+    const priorCountRaw = form.querySelector('.academy-prior-input').value.trim();
     const cycleSize = cycleSizeRaw ? parseInt(cycleSizeRaw, 10) : null;
     const paidCycles = paidCyclesRaw ? parseInt(paidCyclesRaw, 10) : null;
+    const priorCount = priorCountRaw ? parseInt(priorCountRaw, 10) : 0;
     if(!name || selectedDays.length === 0) return;
     const kid = kids.find(k=>k.id===kidId);
     if(!kid.academies) kid.academies = [];
     if(academyId){
       const ac = kid.academies.find(a=>a.id===academyId);
-      if(ac){ ac.name = name; ac.days = selectedDays; ac.cycleSize = cycleSize; ac.paidCycles = paidCycles; }
+      if(ac){ ac.name = name; ac.days = selectedDays; ac.cycleSize = cycleSize; ac.paidCycles = paidCycles; ac.priorCount = priorCount; }
     } else {
-      kid.academies.push({ id:'ac_'+Date.now(), name, days:selectedDays, cycleSize, paidCycles });
+      kid.academies.push({ id:'ac_'+Date.now(), name, days:selectedDays, cycleSize, paidCycles, priorCount });
     }
     academyFormState = null;
     await saveKids();
