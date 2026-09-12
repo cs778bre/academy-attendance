@@ -184,6 +184,9 @@
     cursor:pointer; font-size:14px; color:var(--ink); display:flex; align-items:center; justify-content:center;
   }
   .nav-btn:hover{ background:var(--line); }
+  .kid-legend{ display:flex; flex-wrap:wrap; gap:12px; margin-bottom:10px; }
+  .kid-legend .item{ display:flex; align-items:center; gap:5px; font-size:12px; color:var(--ink-soft); font-weight:600; }
+  .kid-legend .dot{ width:9px; height:9px; border-radius:50%; flex-shrink:0; }
   .weekdays{ display:grid; grid-template-columns:repeat(7,1fr); font-size:12px; color:var(--ink-soft); margin-bottom:6px; }
   .weekdays div{ text-align:center; padding:4px 0; }
   .weekdays div.sat{ color:#4C6FBE; font-weight:700; }
@@ -199,7 +202,7 @@
     overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .chip-list{ display:flex; flex-direction:column; gap:4px; min-width:0; }
   .chip{
-    display:flex; align-items:center; gap:5px; font-size:11px; padding:3px 7px;
+    display:flex; align-items:center; gap:5px; font-size:12px; padding:4px 8px;
     border-radius:20px; cursor:pointer; border:1px solid var(--none-line);
     background:var(--none-bg); color:var(--ink-soft); user-select:none;
     transition:transform .08s ease; min-width:0; width:100%;
@@ -220,8 +223,8 @@
   @media (max-width: 760px){
     .layout{ flex-direction:column; }
     .sidebar{ width:100%; }
-    .cell{ min-height:56px; padding:4px; }
-    .chip .txt{ max-width:32px; }
+    .cell{ min-height:60px; padding:4px; }
+    .chip{ font-size:12px; padding:4px 7px; }
     .calendar-card{ padding:14px; }
     .summary-grid{ grid-template-columns:repeat(auto-fill, minmax(150px,1fr)); }
   }
@@ -264,6 +267,7 @@
         <div class="month-label" id="monthLabel"></div>
         <button class="nav-btn" id="nextBtn">›</button>
       </div>
+      <div id="kidLegend" class="kid-legend"></div>
       <div class="weekdays">
         <div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div class="sat">토</div><div class="sun">일</div>
       </div>
@@ -709,9 +713,8 @@ function renderGrid(){
         const status = attendance[attKey];
         const chip = document.createElement('div');
         chip.className = 'chip' + (status ? ' '+status : '');
-        const label = kids.filter(k=>k.id===kid.id)[0].academies.length > 1 || kids.length > 1
-          ? `${kid.name} ${ac.name}` : ac.name;
-        chip.innerHTML = `<span class="dot"></span><span class="txt">${escapeHtml(label)}</span>`;
+        chip.style.borderLeft = `4px solid ${kid.color}`;
+        chip.innerHTML = `<span class="dot" style="background:${kid.color}"></span><span class="txt">${escapeHtml(ac.name)}</span>`;
         chip.title = `${kid.name} · ${ac.name}`;
         chip.addEventListener('click', ()=> cycleAttendance(attKey));
         chipList.appendChild(chip);
@@ -761,10 +764,19 @@ async function deleteAcademy(kidId, academyId){
   render();
 }
 
+function renderKidLegend(){
+  const el = document.getElementById('kidLegend');
+  if(kids.length < 2){ el.innerHTML = ''; return; } // 아이가 1명이면 색 구분이 필요 없음
+  el.innerHTML = kids.map(kid=>`
+    <span class="item"><span class="dot" style="background:${kid.color}"></span>${escapeHtml(kid.name)}</span>
+  `).join('');
+}
+
 function render(){
   renderMonthLabel();
   renderSummary();
   renderKidList();
+  renderKidLegend();
   renderGrid();
 }
 
