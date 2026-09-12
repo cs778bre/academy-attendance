@@ -188,12 +188,12 @@
   .kid-legend .item{ display:flex; align-items:center; gap:5px; font-size:12px; color:var(--ink-soft); font-weight:600; }
   .kid-legend .dot{ width:9px; height:9px; border-radius:50%; flex-shrink:0; }
   .calendar-scroll{ overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:6px; }
-  .calendar-inner{ min-width:700px; }
-  .weekdays{ display:grid; grid-template-columns:repeat(7,1fr); font-size:12px; color:var(--ink-soft); margin-bottom:6px; }
+  .calendar-inner{ width:max-content; min-width:100%; }
+  .weekdays{ display:grid; grid-template-columns:repeat(7,minmax(132px,1fr)); gap:6px; font-size:12px; color:var(--ink-soft); margin-bottom:6px; }
   .weekdays div{ text-align:center; padding:4px 0; }
   .weekdays div.sat{ color:#4C6FBE; font-weight:700; }
   .weekdays div.sun{ color:var(--absent); font-weight:700; }
-  .grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:6px; }
+  .grid{ display:grid; grid-template-columns:repeat(7,minmax(132px,1fr)); gap:6px; }
   .cell{ min-height:78px; min-width:0; border-radius:10px; padding:7px 7px 9px; background:transparent; }
   .cell.empty{ background:none; }
   .cell .date-num{ font-size:13px; color:var(--ink-soft); margin-bottom:4px; }
