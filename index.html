@@ -504,7 +504,7 @@ function getCycleStatus(ac, sortedDates){
   }
   const cycleNum = Math.ceil(cum / ac.cycleSize);
   const pos = cum - (cycleNum - 1) * ac.cycleSize;
-  return { text: `${cycleNum}회차-${pos}번째 진행중 (누적 ${cum}회)`, paidText: ac.paidCycles ? `${ac.paidCycles}회차까지 납부` : null };
+  return { text: `${cycleNum}회차-${pos}번째 완료 (누적 ${cum}회)`, paidText: ac.paidCycles ? `${ac.paidCycles}회차까지 납부` : null };
 }
 
 function renderMonthLabel(){
