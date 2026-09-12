@@ -98,6 +98,7 @@
     padding-top:4px; border-top:1px dashed var(--line);
   }
   .summary-item .cycle-paid-row{ font-size:11px; color:var(--ink-soft); margin-top:1px; }
+  .summary-item .summary-note{ font-size:11px; color:var(--accent); margin-top:5px; font-weight:600; }
   .stat-present b{ color:var(--present); }
   .stat-scheduled b{ color:var(--ink); }
   .summary-empty{ font-size:13px; color:var(--ink-soft); padding:6px 0; }
@@ -124,9 +125,9 @@
 
   .academy-list{ margin:8px 0 4px; display:flex; flex-direction:column; gap:6px; }
   .academy-tag{
-    display:flex; align-items:center; justify-content:space-between; gap:6px;
     background:var(--none-bg); border-radius:9px; padding:6px 9px; font-size:12px;
   }
+  .academy-tag-main{ display:flex; align-items:center; justify-content:space-between; gap:6px; }
   .academy-tag .a-name{ font-weight:600; }
   .academy-tag .a-days{ color:var(--ink-soft); font-size:11px; margin-left:4px; }
   .academy-tag .a-actions{ display:flex; align-items:center; gap:6px; flex-shrink:0; }
@@ -134,6 +135,7 @@
   .academy-tag .a-edit:hover{ color:var(--accent); }
   .academy-tag .a-del{ background:none; border:none; color:var(--ink-soft); cursor:pointer; font-size:13px; }
   .academy-tag .a-del:hover{ color:var(--absent); }
+  .academy-tag .a-note{ font-size:11px; color:var(--accent); margin-top:4px; font-weight:600; }
 
   .mini-add-btn{
     font-size:12px; color:var(--accent); background:none; border:none;
@@ -314,7 +316,7 @@ const KR_HOLIDAYS = {
   '2027-10-11':'대체공휴일', '2027-12-25':'크리스마스', '2027-12-27':'대체공휴일',
 };
 
-let kids = []; // {id, name, color, academies:[{id, name, days:[0-6], cycleSize?, paidCycles?, priorCount?}]}
+let kids = []; // {id, name, color, academies:[{id, name, days:[0-6], cycleSize?, paidCycles?, priorCount?, note?}]}
 let attendance = {}; // key: kidId__academyId__YYYY-MM-DD -> 'present' | 'absent'
 let current = new Date();
 current.setDate(1);
@@ -543,6 +545,7 @@ function renderSummary(){
         <div class="cycle-row">${escapeHtml(it.cycleStatus.text)}</div>
         ${it.cycleStatus.paidText ? `<div class="cycle-paid-row">${escapeHtml(it.cycleStatus.paidText)}</div>` : ''}
       ` : ''}
+      ${it.ac.note ? `<div class="summary-note">📌 ${escapeHtml(it.ac.note)}</div>` : ''}
     </div>
   `).join('');
 }
@@ -559,11 +562,14 @@ function renderKidList(){
       const cycleText = ac.cycleSize ? ` · ${ac.cycleSize}회 1주기${ac.paidCycles ? ` · ${ac.paidCycles}회차까지 납부` : ''}${ac.priorCount ? ` · 기존 ${ac.priorCount}회 반영` : ''}` : '';
       return `
       <div class="academy-tag">
-        <span><span class="a-name">${escapeHtml(ac.name)}</span><span class="a-days">${daysLabel(ac.days) || '요일 미설정'}${escapeHtml(cycleText)}</span></span>
-        <span class="a-actions">
-          <button class="a-edit" data-kid="${kid.id}" data-academy="${ac.id}" title="수정">✎</button>
-          <button class="a-del" data-kid="${kid.id}" data-academy="${ac.id}" title="삭제">×</button>
-        </span>
+        <div class="academy-tag-main">
+          <span><span class="a-name">${escapeHtml(ac.name)}</span><span class="a-days">${daysLabel(ac.days) || '요일 미설정'}${escapeHtml(cycleText)}</span></span>
+          <span class="a-actions">
+            <button class="a-edit" data-kid="${kid.id}" data-academy="${ac.id}" title="수정">✎</button>
+            <button class="a-del" data-kid="${kid.id}" data-academy="${ac.id}" title="삭제">×</button>
+          </span>
+        </div>
+        ${ac.note ? `<div class="a-note">📌 ${escapeHtml(ac.note)}</div>` : ''}
       </div>
     `;
     }).join('');
@@ -577,6 +583,7 @@ function renderKidList(){
     const prefillCycleSize = editingAcademy && editingAcademy.cycleSize ? editingAcademy.cycleSize : '';
     const prefillPaidCycles = editingAcademy && editingAcademy.paidCycles ? editingAcademy.paidCycles : '';
     const prefillPriorCount = editingAcademy && editingAcademy.priorCount ? editingAcademy.priorCount : '';
+    const prefillNote = editingAcademy && editingAcademy.note ? editingAcademy.note : '';
 
     return `
       <div class="kid-block">
@@ -596,6 +603,7 @@ function renderKidList(){
             <input type="number" min="1" class="academy-cycle-input" placeholder="몇 회당 1주기 (선택, 예: 12)" value="${prefillCycleSize}">
             <input type="number" min="1" class="academy-paid-input" placeholder="납부 완료 회차 (선택, 예: 6)" value="${prefillPaidCycles}">
             <input type="number" min="0" class="academy-prior-input" placeholder="이 앱 기록 전 이미 진행한 횟수 (선택, 예: 8)" value="${prefillPriorCount}">
+            <input type="text" class="academy-note-input" placeholder="메모 (선택, 예: 결제취소 이월 2회)" value="${escapeHtml(prefillNote)}">
           </div>
           <div class="form-row">
             <button class="btn btn-primary academy-save-btn" data-kid="${kid.id}" data-academy="${editingAcademy ? editingAcademy.id : ''}">${editingAcademy ? '수정 저장' : '저장'}</button>
@@ -636,6 +644,7 @@ function renderKidList(){
     const cycleSizeRaw = form.querySelector('.academy-cycle-input').value.trim();
     const paidCyclesRaw = form.querySelector('.academy-paid-input').value.trim();
     const priorCountRaw = form.querySelector('.academy-prior-input').value.trim();
+    const note = form.querySelector('.academy-note-input').value.trim();
     const cycleSize = cycleSizeRaw ? parseInt(cycleSizeRaw, 10) : null;
     const paidCycles = paidCyclesRaw ? parseInt(paidCyclesRaw, 10) : null;
     const priorCount = priorCountRaw ? parseInt(priorCountRaw, 10) : 0;
@@ -644,9 +653,9 @@ function renderKidList(){
     if(!kid.academies) kid.academies = [];
     if(academyId){
       const ac = kid.academies.find(a=>a.id===academyId);
-      if(ac){ ac.name = name; ac.days = selectedDays; ac.cycleSize = cycleSize; ac.paidCycles = paidCycles; ac.priorCount = priorCount; }
+      if(ac){ ac.name = name; ac.days = selectedDays; ac.cycleSize = cycleSize; ac.paidCycles = paidCycles; ac.priorCount = priorCount; ac.note = note; }
     } else {
-      kid.academies.push({ id:'ac_'+Date.now(), name, days:selectedDays, cycleSize, paidCycles, priorCount });
+      kid.academies.push({ id:'ac_'+Date.now(), name, days:selectedDays, cycleSize, paidCycles, priorCount, note });
     }
     academyFormState = null;
     await saveKids();
